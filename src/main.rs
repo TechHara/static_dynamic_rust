@@ -40,29 +40,30 @@ fn main() -> Result<()> {
     }
 }
 
+fn static_dispatcher(
+    tokenize_and_count: impl Fn(String) -> usize,
+    ifs: BufReader<File>,
+) -> Result<()> {
+    ifs.lines()
+        .map(|line| tokenize_and_count(line.unwrap()))
+        .for_each(move |n| {
+            println!("{n}");
+        });
+    Ok(())
+}
+
 fn run_static_dispatch(delim: Delimiter, ifs: BufReader<File>) -> Result<()> {
     match delim {
-        Delimiter::Tab => ifs
-            .lines()
-            .map(|line| line.unwrap().split('\t').count())
-            .for_each(move |n| {
-                println!("{n}");
-            }),
-        Delimiter::Whitespace => ifs
-            .lines()
-            .map(|line| line.unwrap().split_whitespace().count())
-            .for_each(move |n| {
-                println!("{n}");
-            }),
+        Delimiter::Tab => static_dispatcher(|line| line.split('\t').count(), ifs),
+        Delimiter::Whitespace => static_dispatcher(|line| line.split_whitespace().count(), ifs),
     }
-    Ok(())
 }
 
 fn run_dynamic_dispatch(delim: Delimiter, ifs: BufReader<File>) -> Result<()> {
     let tokenize: Box<dyn for<'a> Fn(&'a str) -> Box<dyn Iterator<Item = &'a str> + 'a>> =
         match delim {
-            Delimiter::Tab => Box::new(move |line: &str| Box::new(line.split('\t'))),
-            Delimiter::Whitespace => Box::new(move |line: &str| Box::new(line.split_whitespace())),
+            Delimiter::Tab => Box::new(move |line| Box::new(line.split('\t'))),
+            Delimiter::Whitespace => Box::new(move |line| Box::new(line.split_whitespace())),
         };
 
     ifs.lines()
